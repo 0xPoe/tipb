@@ -86,7 +86,9 @@ message AnalyzeColumnsReq {
     // There must be one non-zero value in sample_rate and sample_size.
     optional double sample_rate = 11;
 
-    // ndv_rate is the sampling rate that determines how many samples will be used to calculate the NDV.
+    // ndv_rate selects rows for NDV separately from sample_rate. Absent or 1
+    // keeps the legacy response. A value in (0, 1) requests ndv_sample_count;
+    // callers must also accept a legacy response from older servers.
     optional double ndv_rate = 12;
 }
 
@@ -138,6 +140,10 @@ message Histogram {
 message FMSketch {
     optional uint64 mask = 1 [(gogoproto.nullable) = false];
     repeated uint64 hashset = 2;
+    // Used only with RowSampleCollector.ndv_sample_count. In that mode, hashset holds
+    // hashes seen once and multi_hashset holds hashes seen at least twice.
+    // The sets are disjoint, use the same mask, and share the size limit.
+    repeated uint64 multi_hashset = 3;
 }
 
 // SampleCollector is used for collect samples and calculate the count and ndv of an column.
@@ -156,10 +162,12 @@ message RowSampleCollector {
     optional int64 count = 3 [(gogoproto.nullable) = false];
     repeated FMSketch fm_sketch = 4;
     repeated int64 total_size = 5;
-    // singleton_sketch estimates the number of values that appear only once in the sample.
-    repeated FMSketch singleton_sketch = 6;
-    // sketch_sample_count is the number of samples processed when building fm_sketch and singleton_sketch.
-    optional int64 sketch_sample_count = 7 [(gogoproto.nullable) = false];
+    reserved 6, 7;
+    // Number of rows selected for NDV. Presence selects sampled NDV, even at zero.
+    // count still counts every visible row. TiKV scales null_counts and total_size
+    // to that population before returning them. fm_sketch keeps its existing
+    // column/group order. Absent means the legacy full-input path.
+    optional int64 ndv_sample_count = 8;
 }
 
 message RowSample {
