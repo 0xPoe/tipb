@@ -284,9 +284,12 @@ type AnalyzeColumnsReq struct {
 	// sample_rate is the sampling rate that how many samples will collected.
 	// There must be one non-zero value in sample_rate and sample_size.
 	SampleRate *float64 `protobuf:"fixed64,11,opt,name=sample_rate,json=sampleRate" json:"sample_rate,omitempty"`
-	// ndv_rate selects rows for NDV separately from sample_rate. Absent or 1
-	// keeps the legacy response. A value in (0, 1) requests ndv_sample_count;
-	// callers must also accept a legacy response from older servers.
+	// ndv_rate keeps each visible row with this probability for NDV. Absent or 1
+	// keeps the legacy response. A value in (0, 1) requests ndv_sample_count,
+	// and TopN and histogram rows then come only from the kept rows, so it must
+	// not be below sample_rate, and with sample_size it should keep about
+	// sample_size rows. Callers must also accept a legacy response from older
+	// servers.
 	NdvRate *float64 `protobuf:"fixed64,12,opt,name=ndv_rate,json=ndvRate" json:"ndv_rate,omitempty"`
 }
 
